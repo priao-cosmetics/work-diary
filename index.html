@@ -1216,12 +1216,14 @@
       }
       .blocker-text {
         flex: 1;
+        min-width: 0;
         font-size: 14px;
         font-weight: 500;
         line-height: 1.5;
         color: #7c1d1d;
         white-space: pre-wrap;
         word-break: break-word;
+        overflow-wrap: break-word;
         cursor: default;
       }
       .blocker-empty {
@@ -2126,10 +2128,25 @@
         .item-row,
         .blocker-row {
           padding: 12px 16px;
+          max-width: 100%;
+          box-sizing: border-box;
         }
         .item-text,
         .blocker-text {
           font-size: 14px;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          max-width: 100%;
+        }
+        .task-inp {
+          min-height: 44px;
+          font-size: 14px;
+        }
+        .blocker-add {
+          padding: 8px 12px;
+        }
+        .blocker-add .task-inp {
+          min-height: 40px;
         }
         .item-actions {
           opacity: 1;
@@ -3520,9 +3537,10 @@
                 pattern="[0-9]*"
                 oninput="this.value=this.value.replace(/[^0-9]/g,'')"
               />
+              <button onclick="var p=document.getElementById('sPin');if(p.type==='password'){p.type='text';this.textContent='🙈';}else{p.type='password';this.textContent='👁';}" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;font-size:14px;line-height:1" title="แสดง/ซ่อน PIN">👁</button>
               <span id="sPinStatus" style="font-size:12px;color:#94a3b8"></span>
             </div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px">เว้นว่าง = ไม่ล็อค | ใส่ 4 หลัก = ล็อคทุกครั้งที่เปิด</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px">เว้นว่าง = ไม่เปลี่ยน PIN | ใส่ 4 หลัก = ตั้ง PIN ใหม่</div>
           </div>
 
           <!-- ═══ Routine Tasks ═══ -->
@@ -4894,7 +4912,7 @@ function openSettings(){
   var pinEl=document.getElementById('sPin');
   if(pinEl) pinEl.value='';
   var pinSt=document.getElementById('sPinStatus');
-  if(pinSt) pinSt.textContent=s.pinHash?'🔒 ตั้ง PIN แล้ว':'🔓 ยังไม่ตั้ง PIN';
+  if(pinSt) pinSt.textContent=s.pinHash?'🔒 ตั้ง PIN แล้ว — เว้นว่างถ้าไม่เปลี่ยน':'🔓 ยังไม่ตั้ง PIN';
   updateStorageBar();
   renderRoutineSettings();
   if(!_histCollapsed) renderHistorySettings();
@@ -6540,7 +6558,7 @@ function renderBlockers(){
   }
   list.innerHTML=blk.map((b,i)=>`<div class="blocker-row" draggable="true" data-bidx="${i}" ondragstart="WD.blkDragStart(event,${i})" ondragend="WD.blkDragEnd(event)" ondragover="WD.blkDragOver(event)" ondragleave="WD.blkDragLeave(event)" ondrop="WD.blkDragDrop(event,${i})">
     <div class="blocker-dot">🔴</div>
-    <div class="blocker-text">${W.safe(b)}</div>
+    <div class="blocker-text" title="${W.safe(b)}">${W.safe(b)}</div>
     <div class="item-actions">
       <button class="ia-btn" onclick="WD.startBlockerEdit(${i})" title="แก้ไข">✏️</button>
       <button class="ia-btn" onclick="WD.delBlocker(${i})" title="ลบ">✕</button>
@@ -7273,7 +7291,7 @@ function renderBlockerStats(){
   var h='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700;color:#dc2626">ทั้งหมด: '+total+' ครั้ง</span><span style="font-size:12px;color:#6b7280">เดือนมากสุด: <b style="color:#dc2626">'+topM+' ('+topMC+')</b></span></div>';
   months.forEach(function(m){var pct=Math.round(m[1]/maxMo*100);h+='<div style="margin-bottom:5px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:2px"><span>'+m[0]+'</span><span style="color:#dc2626">'+m[1]+'x</span></div><div style="height:7px;background:#fee2e2;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#dc2626;border-radius:4px"></div></div></div>';});
   h+='</div><div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:5px">🔝 ปัญหาที่เกิดซ้ำ</div>';
-  topR.forEach(function(r,i){h+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6"><span style="color:#dc2626;font-weight:800;font-size:11px;width:18px">#'+(i+1)+'</span><span style="flex:1;font-size:11px;word-break:break-word">'+W.safe(r[0])+'</span><span style="font-size:11px;font-weight:700;color:#dc2626">'+r[1]+'x</span></div>';});
+  topR.forEach(function(r,i){h+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6"><span style="color:#dc2626;font-weight:800;font-size:11px;width:18px">#'+(i+1)+'</span><span style="flex:1;font-size:11px;word-break:break-word;min-width:0" title="'+W.safe(r[0])+'">'+W.safe(r[0])+'</span><span style="font-size:11px;font-weight:700;color:#dc2626">'+r[1]+'x</span></div>';});
   el.innerHTML=h;
 }
 
@@ -7979,6 +7997,13 @@ function buildManualHTML(){
     +'<tr><td>สิ้นสัปดาห์</td><td>ตั้ง 📌 แผนสัปดาห์หน้า</td></tr>'
     +'<tr><td>วันจันทร์</td><td>📥 ดึงงานค้าง (auto sort)</td></tr>'
     +'<tr><td>ต้นเดือนใหม่</td><td>🗓️ จบเดือน → Backup + ล้าง → เริ่มสะอาด</td></tr></table>'
+    // Install guide
+    +'<div class="sec g"><span class="sn">📲 ติดตั้งเป็นแอป (PWA)</span></div>'
+    +'<div class="gr">'
+    +'<div class="cd gn"><div class="ch"><div class="cn g">A</div><div class="ct">Android (Chrome)</div></div><div class="pt">เปิด Work Diary ผ่าน <b>Chrome</b></div><div class="pt">กดเมนู <b>⋮</b> มุมขวาบน</div><div class="pt">กด <b class="g">"เพิ่มลงในหน้าจอหลัก"</b></div><div class="pt">กด <b>"ติดตั้ง"</b> → icon ขึ้นหน้าจอ</div></div>'
+    +'<div class="cd bl"><div class="ch"><div class="cn">B</div><div class="ct">iPhone / iPad (Safari)</div></div><div class="pt">เปิด Work Diary ผ่าน <b>Safari</b> เท่านั้น</div><div class="pt">กดปุ่ม <b>แชร์</b> (กล่องลูกศรขึ้น) ด้านล่าง</div><div class="pt">เลื่อนหา <b class="p">"เพิ่มในหน้าจอโฮม"</b></div><div class="pt">กด <b>"เพิ่ม"</b> → icon ขึ้นหน้าจอ</div></div>'
+    +'<div class="cd pu"><div class="ch"><div class="cn p">C</div><div class="ct">Windows / Mac (Chrome)</div></div><div class="pt">เปิด Work Diary ผ่าน <b>Chrome</b></div><div class="pt">กดไอคอน <b class="p">📥 ติดตั้ง</b> ที่ address bar</div><div class="pt">หรือเมนู <b>⋮ → ติดตั้ง Work Diary</b></div><div class="pt">เปิดเป็นหน้าต่างแยก ไม่ต้องเปิด Browser</div></div>'
+    +'</div>'
     +ft+'</div>';
 
   // ═══ PAGE 4: V2.3.3 Features + Shortcut + Tips ═══
