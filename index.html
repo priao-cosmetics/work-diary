@@ -2139,14 +2139,23 @@
           max-width: 100%;
         }
         .task-inp {
-          min-height: 44px;
-          font-size: 14px;
+          min-height: 44px !important;
+          font-size: 14px !important;
+          padding: 10px 12px !important;
         }
+        .add-area,
         .blocker-add {
-          padding: 8px 12px;
+          flex-wrap: wrap;
+          padding: 8px 12px !important;
+        }
+        .add-area .task-inp,
+        .blocker-add .task-inp {
+          width: 100%;
+          flex: 1 1 100%;
+          min-height: 44px !important;
         }
         .blocker-add .task-inp {
-          min-height: 40px;
+          min-height: 40px !important;
         }
         .item-actions {
           opacity: 1;
@@ -2315,6 +2324,12 @@
         #anlNewSec {
           grid-template-columns: 1fr !important;
           padding: 0 12px 12px !important;
+        }
+        #anlNewSec > div {
+          padding: 12px !important;
+          overflow: hidden !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
         }
         #analyticsModal {
           padding: 0 !important;
@@ -7229,12 +7244,12 @@ function ensureAnalyticsDOM(){
   if(!anlModal)return;
   var sec=document.createElement('div');sec.id='anlNewSec';
   sec.style.cssText='padding:0 20px 20px;background:#f8fafc;display:grid;grid-template-columns:1fr 1fr;gap:16px';
-  sec.innerHTML='<div style="background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)">'
+  sec.innerHTML='<div style="background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;box-sizing:border-box">'
     +'<div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:12px">📊 Productivity สัปดาห์เทียบกัน</div>'
-    +'<canvas id="anlWeekTrend" width="360" height="200"></canvas></div>'
-    +'<div style="background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)">'
+    +'<canvas id="anlWeekTrend" width="360" height="200" style="max-width:100%;height:auto"></canvas></div>'
+    +'<div style="background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;box-sizing:border-box">'
     +'<div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:12px">🚧 สถิติ Blocker ซ้ำๆ</div>'
-    +'<div id="anlBlockerStats" style="font-size:13px"></div></div>';
+    +'<div id="anlBlockerStats" style="font-size:13px;overflow:hidden"></div></div>';
   anlModal.appendChild(sec);
 }
 
@@ -7288,7 +7303,7 @@ function renderBlockerStats(){
   var topM='',topMC=0;Object.keys(mCounts).forEach(function(k){if(mCounts[k]>topMC){topMC=mCounts[k];topM=k;}});
   var topR=Object.entries(rCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
   var months=Object.entries(mCounts).slice(-4),maxMo=Math.max(1,...months.map(function(m){return m[1];}));
-  var h='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-weight:700;color:#dc2626">ทั้งหมด: '+total+' ครั้ง</span><span style="font-size:12px;color:#6b7280">เดือนมากสุด: <b style="color:#dc2626">'+topM+' ('+topMC+')</b></span></div>';
+  var h='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px;overflow:hidden"><span style="font-weight:700;color:#dc2626;white-space:nowrap">ทั้งหมด: '+total+' ครั้ง</span><span style="font-size:11px;color:#6b7280;white-space:nowrap">เดือนมากสุด: <b style="color:#dc2626">'+topM+' ('+topMC+')</b></span></div>';
   months.forEach(function(m){var pct=Math.round(m[1]/maxMo*100);h+='<div style="margin-bottom:5px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:2px"><span>'+m[0]+'</span><span style="color:#dc2626">'+m[1]+'x</span></div><div style="height:7px;background:#fee2e2;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#dc2626;border-radius:4px"></div></div></div>';});
   h+='</div><div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:5px">🔝 ปัญหาที่เกิดซ้ำ</div>';
   topR.forEach(function(r,i){h+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6"><span style="color:#dc2626;font-weight:800;font-size:11px;width:18px">#'+(i+1)+'</span><span style="flex:1;font-size:11px;word-break:break-word;min-width:0" title="'+W.safe(r[0])+'">'+W.safe(r[0])+'</span><span style="font-size:11px;font-weight:700;color:#dc2626">'+r[1]+'x</span></div>';});
