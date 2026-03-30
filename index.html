@@ -2127,16 +2127,35 @@
         }
         .item-row,
         .blocker-row {
-          padding: 12px 16px;
+          padding: 8px 12px;
           max-width: 100%;
           box-sizing: border-box;
+          gap: 6px;
         }
         .item-text,
         .blocker-text {
-          font-size: 14px;
+          font-size: 13px;
           word-break: break-word;
           overflow-wrap: break-word;
           max-width: 100%;
+          line-height: 1.4;
+        }
+        .item-status-group {
+          gap: 3px;
+        }
+        .ist {
+          width: 22px;
+          height: 22px;
+          font-size: 11px;
+        }
+        .pri-badge {
+          font-size: 10px;
+          padding: 1px 6px;
+        }
+        .ia-btn {
+          width: 26px;
+          height: 26px;
+          font-size: 12px;
         }
         .task-inp {
           min-height: 44px !important;
@@ -3182,7 +3201,7 @@
                 class="task-inp"
                 id="taskInput"
                 rows="1"
-                placeholder="พิมพ์รายการงาน... (Enter = เพิ่ม | Shift+Enter = ขึ้นบรรทัด)"
+                placeholder="พิมพ์รายการงาน... (Enter = เพิ่ม)"
               ></textarea>
               <div class="pri-sel" id="priSel">
                 <button
@@ -3249,7 +3268,7 @@
                 class="task-inp"
                 id="blockerInput"
                 rows="2"
-                placeholder="พิมพ์ปัญหา / Blocker... (Enter = เพิ่ม | Shift+Enter = ขึ้นบรรทัด)"
+                placeholder="พิมพ์ปัญหา / Blocker... (Enter = เพิ่ม)"
               ></textarea>
               <button class="add-btn" onclick="WD.addBlocker()">เพิ่ม</button>
             </div>
@@ -5935,6 +5954,7 @@ function initTouchDrag(){
     il.addEventListener('touchstart',function(e){tdStart(e,'item','.item-row','data-idx');},{passive:false});
     il.addEventListener('touchmove',function(e){tdMove(e);},{passive:false});
     il.addEventListener('touchend',function(e){tdEnd(e,'item');},{passive:false});
+    il.addEventListener('touchcancel',function(e){tdEnd(e,'item');},{passive:false});
   }
   // Blockers
   var bl=document.getElementById('blockerList');
@@ -5942,6 +5962,7 @@ function initTouchDrag(){
     bl.addEventListener('touchstart',function(e){tdStart(e,'blocker','.blocker-row','data-idx');},{passive:false});
     bl.addEventListener('touchmove',function(e){tdMove(e);},{passive:false});
     bl.addEventListener('touchend',function(e){tdEnd(e,'blocker');},{passive:false});
+    bl.addEventListener('touchcancel',function(e){tdEnd(e,'blocker');},{passive:false});
   }
   // Ideas
   var idl=document.querySelector('.idea-list');
@@ -5949,7 +5970,14 @@ function initTouchDrag(){
     idl.addEventListener('touchstart',function(e){tdStart(e,'idea','.idea-row','data-id');},{passive:false});
     idl.addEventListener('touchmove',function(e){tdMove(e);},{passive:false});
     idl.addEventListener('touchend',function(e){tdEnd(e,'idea');},{passive:false});
+    idl.addEventListener('touchcancel',function(e){tdEnd(e,'idea');},{passive:false});
   }
+  // Safety net: ลบ orphan clone ที่ค้าง
+  document.addEventListener('touchend',function(){
+    var orphan=document.getElementById('touchClone');
+    if(orphan){try{orphan.remove();}catch(ex){}}
+    _touchDrag.active=false;
+  },{passive:true});
 }
 
 function tdStart(e,type,rowSel,attrName){
@@ -6009,33 +6037,37 @@ function tdEnd(e,type){
   clearTimeout(_touchDrag.longTimer);
   _touchDrag.longTimer=null;
   if(!_touchDrag.active){return;}
-  // ลบ clone
-  if(_touchDrag.clone){_touchDrag.clone.remove();_touchDrag.clone=null;}
+  // ลบ clone ก่อนทุกกรณี (ป้องกันค้าง)
+  var clone=_touchDrag.clone;
+  if(clone){try{clone.remove();}catch(ex){}}_touchDrag.clone=null;
   // ลบ highlight
   var rowSel=type==='item'?'.item-row':type==='blocker'?'.blocker-row':'.idea-row';
   document.querySelectorAll(rowSel).forEach(function(r){r.classList.remove('dragging','drag-over');});
-  if(!_touchDrag.moved){_touchDrag.active=false;return;}
-  // หา target row
-  var ct=e.changedTouches[0];
-  var targetEl=document.elementFromPoint(ct.clientX,ct.clientY);
-  if(targetEl){
-    var targetRow=targetEl.closest(rowSel);
-    var attrName=type==='idea'?'data-id':'data-idx';
-    if(targetRow){
-      var targetIdx=targetRow.getAttribute(attrName);
-      if(targetIdx!==null&&targetIdx!==_touchDrag.idx){
-        tdDrop(type,_touchDrag.idx,targetIdx);
+  // ถ้าไม่ได้ขยับ → ไม่ drop
+  if(!_touchDrag.moved){_touchDrag.active=false;_touchDrag.el=null;_touchDrag.idx=null;return;}
+  // หา target row (wrap try-catch ป้องกัน error)
+  try{
+    var ct=e.changedTouches[0];
+    if(!ct){_touchDrag.active=false;return;}
+    var targetEl=document.elementFromPoint(ct.clientX,ct.clientY);
+    if(targetEl){
+      var targetRow=targetEl.closest(rowSel);
+      var attrName=type==='idea'?'data-id':'data-idx';
+      if(targetRow){
+        var targetIdx=targetRow.getAttribute(attrName);
+        if(targetIdx!==null&&targetIdx!==_touchDrag.idx){
+          tdDrop(type,_touchDrag.idx,targetIdx);
+        }
+      }
+      if(type==='item'){
+        var stBtn=targetEl.closest('.ssbtn');
+        if(stBtn){
+          var st=stBtn.getAttribute('data-s');
+          if(st) tdDropStatus(_touchDrag.idx,st);
+        }
       }
     }
-    // Drop on status button (items only)
-    if(type==='item'){
-      var stBtn=targetEl.closest('.ssbtn');
-      if(stBtn){
-        var st=stBtn.getAttribute('data-s');
-        if(st) tdDropStatus(_touchDrag.idx,st);
-      }
-    }
-  }
+  }catch(ex){console.warn('Touch drop error:',ex);}
   _touchDrag.active=false;
   _touchDrag.el=null;
   _touchDrag.idx=null;
