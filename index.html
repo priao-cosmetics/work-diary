@@ -3037,11 +3037,11 @@
         <!-- Content -->
         <div class="db">
           <!-- End Month Reminder -->
-          <div id="endMonthBanner" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:8px;cursor:pointer" onclick="WD.endMonth()">
+          <div id="endMonthBanner" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer" onclick="WD.endMonth()">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:18px">🗓️</span>
-              <span style="flex:1;font-size:13px;font-weight:700;color:#991b1b">📅 วันสุดท้ายของเดือน! ควร Backup + จบเดือน</span>
-              <span style="font-size:11px;color:#dc2626;white-space:nowrap">จบเดือน →</span>
+              <span style="flex:1;font-size:13px;font-weight:700;color:#991b1b">มีข้อมูลเดือนก่อนค้างอยู่!</span>
+              <span style="font-size:12px;color:#fff;background:#dc2626;padding:5px 12px;border-radius:8px;font-weight:700;white-space:nowrap">จบเดือน →</span>
             </div>
           </div>
           <!-- Pending Reminder -->
@@ -3499,7 +3499,7 @@
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button class="mbtn cancel" onclick="document.getElementById('endMonthOverlay').classList.remove('active')">ยกเลิก</button>
-          <button class="mbtn save" onclick="WD.confirmEndMonth()" style="background:#dc2626;border-color:#dc2626;color:#fff">Backup + ล้างเดือนนี้</button>
+          <button class="mbtn save" onclick="WD.confirmEndMonth()" style="background:#dc2626;border-color:#dc2626;color:#fff;padding:10px 20px;font-size:14px;font-weight:700">🗑️ Backup + ล้างเดือนนี้</button>
         </div>
       </div>
     </div>
@@ -5767,52 +5767,63 @@ function closeMonthlyPlan(){
 
 // ── End Month (จบเดือน — Backup + review→Template + ล้าง) ──
 function endMonth(){
-  // Target = เดือนปัจจุบัน (เตือนวันสุดท้ายของเดือน)
-  var now=new Date();
-  var targetYear=now.getFullYear();
-  var targetMonth=now.getMonth();
-  var monthName=MONTHS_TH[targetMonth]+' '+buddYear(targetYear);
-  // Scan data for that month
-  var d=new Date(targetYear,targetMonth,1);
-  var totalItems=0,totalDone=0,totalPend=0,totalRev=0,totalBlk=0,totalDays=0;
-  var reviewItems=[];
-  while(d.getMonth()===targetMonth){
-    var ds=toDS(d);
-    var entry=getDay(ds);
-    if(entry.items&&entry.items.length){
-      totalDays++;
-      entry.items.forEach(function(it){
-        totalItems++;
-        if(it.status==='done') totalDone++;
-        else if(it.status==='pending') totalPend++;
-        else if(it.status==='review') {totalRev++; reviewItems.push(it.text);}
-      });
-      if(entry.blockers) entry.blockers.forEach(function(b){if(b&&b.trim())totalBlk++;});
-    }
-    d.setDate(d.getDate()+1);
-  }
-  if(!totalItems){toast('ไม่มีข้อมูลเดือน '+monthName+' ให้จบ','');return;}
-  // Show confirmation modal
+  // แสดง overlay ทันที (loading state)
   var info=document.getElementById('endMonthInfo');
-  if(info){
-    var compBase=totalDone+totalPend;
-    var pct=compBase>0?Math.round(totalDone/compBase*100):0;
-    info.innerHTML='<div style="font-weight:700;font-size:15px;margin-bottom:10px">เดือน: '+monthName+'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">'
-      +'<div style="background:#e8f5e9;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#16a34a">'+totalDone+'</div><div style="font-size:10px;color:#16a34a">เสร็จสิ้น</div></div>'
-      +'<div style="background:#fff8e1;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#d97706">'+totalPend+'</div><div style="font-size:10px;color:#d97706">รอดำเนิน</div></div>'
-      +'<div style="background:#ede7f6;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#5c6bc0">'+totalRev+'</div><div style="font-size:10px;color:#5c6bc0">แผนงาน</div></div>'
-      +'<div style="background:#fce4ec;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#c62828">'+totalBlk+'</div><div style="font-size:10px;color:#c62828">Blocker</div></div>'
-      +'</div>'
-      +'<div style="font-size:13px;line-height:1.7">'
-      +'📊 Completion: <strong>'+pct+'%</strong> ('+totalDone+'/'+compBase+')<br>'
-      +'📅 มีข้อมูล: '+totalDays+' วัน ('+totalItems+' รายการ)<br>'
-      +(reviewItems.length?'📌 แผนงาน '+reviewItems.length+' รายการ → <strong>สร้าง Template อัตโนมัติ</strong><br>':'')
-      +'</div>';
-  }
-  // Store target for confirmEndMonth
-  endMonth._target={year:targetYear,month:targetMonth,monthName:monthName,reviewItems:reviewItems};
+  if(info) info.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">⏳ กำลังรวบรวมข้อมูล...</div>';
   document.getElementById('endMonthOverlay').classList.add('active');
+  // Scan data ใน setTimeout ให้ UI render ก่อน
+  setTimeout(function(){
+    var now=new Date();
+    var targetYear, targetMonth;
+    if(now.getDate()<=7){
+      var prev=new Date(now.getFullYear(),now.getMonth()-1,1);
+      targetYear=prev.getFullYear();
+      targetMonth=prev.getMonth();
+    } else {
+      targetYear=now.getFullYear();
+      targetMonth=now.getMonth();
+    }
+    var monthName=MONTHS_TH[targetMonth]+' '+buddYear(targetYear);
+    var d=new Date(targetYear,targetMonth,1);
+    var totalItems=0,totalDone=0,totalPend=0,totalRev=0,totalBlk=0,totalDays=0;
+    var reviewItems=[];
+    while(d.getMonth()===targetMonth){
+      var ds=toDS(d);
+      var entry=getDay(ds);
+      if(entry.items&&entry.items.length){
+        totalDays++;
+        entry.items.forEach(function(it){
+          totalItems++;
+          if(it.status==='done') totalDone++;
+          else if(it.status==='pending') totalPend++;
+          else if(it.status==='review') {totalRev++; reviewItems.push(it.text);}
+        });
+        if(entry.blockers) entry.blockers.forEach(function(b){if(b&&b.trim())totalBlk++;});
+      }
+      d.setDate(d.getDate()+1);
+    }
+    if(!totalItems){
+      document.getElementById('endMonthOverlay').classList.remove('active');
+      toast('ไม่มีข้อมูลเดือน '+monthName+' ให้จบ','');return;
+    }
+    if(info){
+      var compBase=totalDone+totalPend;
+      var pct=compBase>0?Math.round(totalDone/compBase*100):0;
+      info.innerHTML='<div style="font-weight:700;font-size:15px;margin-bottom:10px">เดือน: '+monthName+'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">'
+        +'<div style="background:#e8f5e9;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#16a34a">'+totalDone+'</div><div style="font-size:10px;color:#16a34a">เสร็จสิ้น</div></div>'
+        +'<div style="background:#fff8e1;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#d97706">'+totalPend+'</div><div style="font-size:10px;color:#d97706">รอดำเนิน</div></div>'
+        +'<div style="background:#ede7f6;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#5c6bc0">'+totalRev+'</div><div style="font-size:10px;color:#5c6bc0">แผนงาน</div></div>'
+        +'<div style="background:#fce4ec;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:700;color:#c62828">'+totalBlk+'</div><div style="font-size:10px;color:#c62828">Blocker</div></div>'
+        +'</div>'
+        +'<div style="font-size:13px;line-height:1.7">'
+        +'📊 Completion: <strong>'+pct+'%</strong> ('+totalDone+'/'+compBase+')<br>'
+        +'📅 มีข้อมูล: '+totalDays+' วัน ('+totalItems+' รายการ)<br>'
+        +(reviewItems.length?'📌 แผนงาน '+reviewItems.length+' รายการ → <strong>สร้าง Template อัตโนมัติ</strong><br>':'')
+        +'</div>';
+    }
+    endMonth._target={year:targetYear,month:targetMonth,monthName:monthName,reviewItems:reviewItems};
+  },50);
 }
 function confirmEndMonth(){
   var target=endMonth._target;
@@ -5843,6 +5854,10 @@ function confirmEndMonth(){
   logAction('🗓️ จบเดือน '+target.monthName+' — ล้าง '+cleared+' วัน');
   // Close modal + refresh
   document.getElementById('endMonthOverlay').classList.remove('active');
+  // ซ่อน banner เตือน
+  var eb=document.getElementById('endMonthBanner');if(eb)eb.style.display='none';
+  var es=document.getElementById('endMonthReminderSettings');if(es)es.style.display='none';
+  var es=document.getElementById('endMonthReminderSettings');if(es)es.style.display='none';
   render();
   updateStorageBar();
   toast('🗓️ จบเดือน '+target.monthName+' เรียบร้อย!'+(target.reviewItems.length?' สร้าง Template แผนงาน '+target.reviewItems.length+' รายการ':''),'ok');
@@ -5851,13 +5866,14 @@ function confirmEndMonth(){
 // ── End Month Reminder (เตือนวันที่ 1-7 ของเดือนใหม่) ──
 function checkEndMonthReminder(){
   var now=new Date();
-  // เตือนเฉพาะวันสุดท้ายของเดือน
-  var lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  if(now.getDate()!==lastDay) return;
-  // Check if there's data this month
-  var d=new Date(now.getFullYear(),now.getMonth(),1);
+  // เตือนเฉพาะวันที่ 1-7 ของเดือนใหม่ (ถ้ามี data เดือนก่อน)
+  if(now.getDate()>7) return;
+  // Scan เดือนก่อนหน้า
+  var prevMonth=new Date(now.getFullYear(),now.getMonth()-1,1);
+  var prevMo=prevMonth.getMonth();
+  var d=new Date(prevMonth);
   var hasData=false;
-  while(d.getMonth()===now.getMonth()){
+  while(d.getMonth()===prevMo){
     var key='diary:'+toDS(d);
     if(localStorage.getItem(key)){hasData=true;break;}
     d.setDate(d.getDate()+1);
