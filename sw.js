@@ -3,7 +3,7 @@
 //  Cache Strategy: Cache-First + Version Update
 // ══════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'wd-v2.3.3-2604010641';
+const CACHE_VERSION = 'wd-v2.3.3-2604010654';
 const CACHE_FILES = [
   './',
   './index.html',

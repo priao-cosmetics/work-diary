@@ -3490,7 +3490,7 @@
     </div>
 
     <!-- End Month Confirmation Modal -->
-    <div id="endMonthOverlay" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+    <div id="endMonthOverlay" class="modal-overlay" style="z-index:1001" onclick="if(event.target===this)this.classList.remove('active')">
       <div class="modal-box" style="max-width:480px">
         <h2 style="font-size:16px;font-weight:700;color:#dc2626;margin:0 0 12px">🗓️ จบเดือน — Backup + ล้างกระดาน</h2>
         <div id="endMonthInfo" style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:16px"></div>
@@ -5767,6 +5767,7 @@ function closeMonthlyPlan(){
 
 // ── End Month (จบเดือน — Backup + review→Template + ล้าง) ──
 function endMonth(){
+  // ไม่ปิด Settings — overlay จบเดือนจะซ้อนทับด้านบน (z-index 1001)
   // แสดง overlay ทันที (loading state)
   var info=document.getElementById('endMonthInfo');
   if(info) info.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">⏳ กำลังรวบรวมข้อมูล...</div>';
@@ -5854,6 +5855,7 @@ function confirmEndMonth(){
   logAction('🗓️ จบเดือน '+target.monthName+' — ล้าง '+cleared+' วัน');
   // Close modal + refresh
   document.getElementById('endMonthOverlay').classList.remove('active');
+  closeAllModals(); // ปิด Settings ด้วย
   // ซ่อน banner เตือน
   var eb=document.getElementById('endMonthBanner');if(eb)eb.style.display='none';
   var es=document.getElementById('endMonthReminderSettings');if(es)es.style.display='none';
