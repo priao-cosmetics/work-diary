@@ -4397,7 +4397,7 @@ function safe(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 // ── Date helpers ──
 const MONTHS_TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const MONTHS_FULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-const DAYS_S=['อา','จ','อ','พ','พฤ','ศ','ส'];
+const DAYS_S=['จ','อ','พ','พฤ','ศ','ส','อา'];
 const SL={done:'✅ เสร็จสิ้น',pending:'🔄 รอดำเนินการ',review:'📌 แผนสัปดาห์หน้า'};
 function buddYear(y){return y+543}
 function toDS(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -4503,7 +4503,7 @@ function renderCal(){
   const first=new Date(y,m,1);
   const last=new Date(y,m+1,0);
   let html=DAYS_S.map(d=>`<div class="cal-dow">${d}</div>`).join('');
-  const startDow=first.getDay();
+  const startDow=(first.getDay()+6)%7; // Monday=0, Sunday=6 (ISO 8601)
   for(let i=0;i<startDow;i++){
     const pd=new Date(y,m,1-startDow+i);
     html+=`<div class="cal-cell other" onclick="WD.pickDate('${toDS(pd)}')">${pd.getDate()}</div>`;
@@ -4518,7 +4518,7 @@ function renderCal(){
     entry.items.forEach(it=>{
       if(it.status==='done') cDone++;
       else if(it.status==='pending') cPend++;
-      else cRev++;
+      else if(it.status==='review') cRev++;
     });
     // Build dots (max 1 dot per status)
     let dots='';
@@ -4662,7 +4662,7 @@ function renderMobCal(){
   document.getElementById('mobCalTitle').textContent=MONTHS_FULL[m]+' '+buddYear(y);
   const first=new Date(y,m,1),last=new Date(y,m+1,0);
   let html=DAYS_S.map(d=>`<div class="cal-dow">${d}</div>`).join('');
-  const sd=first.getDay();
+  const sd=(first.getDay()+6)%7; // Monday=0, Sunday=6 (ISO 8601)
   for(let i=0;i<sd;i++){const pd=new Date(y,m,1-sd+i);html+=`<div class="cal-cell other">${pd.getDate()}</div>`;}
   for(let d=1;d<=last.getDate();d++){
     const ds=toDS(new Date(y,m,d));
