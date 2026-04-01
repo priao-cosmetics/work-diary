@@ -4756,7 +4756,11 @@ function openExport(){
   expType='weekly';expStatusFilter='all';
   const now=new Date();
   document.getElementById('monthInput').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  _wkMonthOffset=0;
+  // เปิดเดือนที่มี Monday ของสัปดาห์ปัจจุบัน (approach B: ISO Week by Monday)
+  var dow=now.getDay(); // 0=Sun,1=Mon,...
+  var mondayOfThisWeek=new Date(now);
+  mondayOfThisWeek.setDate(now.getDate() - (dow===0?6:dow-1)); // ย้อนไปวันจันทร์
+  _wkMonthOffset=(mondayOfThisWeek.getFullYear()-now.getFullYear())*12 + (mondayOfThisWeek.getMonth()-now.getMonth());
   setExpType('weekly');
   // Reset status filter UI
   ['All','Done','Pending','Review','Blocker'].forEach(function(s){
@@ -4849,8 +4853,21 @@ function renderWeekBlockGrid(){
   if(!grid)return;
   const weeks=getWeeksOfMonth(y,m);
   const allEnts=allEntries();
-  const selWeek=document.getElementById('weekInput').value; // legacy compat
-  grid.innerHTML=weeks.map(w=>{
+  const selWeek=document.getElementById('weekInput').value;
+  var noteHtml='';
+  var firstDow=new Date(y,m,1).getDay();
+  if(firstDow!==1){
+    // หาสัปดาห์ที่ครอบคลุมวันที่ 1 ของเดือน
+    var day1=new Date(y,m,1);
+    var monOfWeek=new Date(day1);
+    monOfWeek.setDate(day1.getDate()-(firstDow===0?6:firstDow-1));
+    var thuOfWeek=new Date(monOfWeek);thuOfWeek.setDate(monOfWeek.getDate()+3);
+    var prevWkNum=isoWeekStr(thuOfWeek).split('W')[1];
+    var orphanEnd=firstDow===0?1:8-firstDow;
+    var orphanLabel=orphanEnd===1?'1':('1-'+orphanEnd);
+    noteHtml='<div style="grid-column:1/-1;padding:6px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:11px;color:#92400e;text-align:center">📌 '+orphanLabel+' '+MONTHS_TH[m]+' อยู่ในสัปดาห์ที่ '+prevWkNum+' (ดูได้ที่เดือนก่อน)</div>';
+  }
+  grid.innerHTML=noteHtml+weeks.map(w=>{
     const monDS=toDS(w.mon),sunDS=toDS(w.sun);
     const thu=new Date(w.mon);thu.setDate(w.mon.getDate()+3);
     const wkStr=isoWeekStr(thu);
@@ -4858,10 +4875,12 @@ function renderWeekBlockGrid(){
     const isEmpty=cnt===0;const isSel=_selWeeks.some(function(w){return w.wkStr===wkStr;});
     const wkNum=wkStr.split('W')[1];
     function fmtD(d){return d.getDate()+' '+MONTHS_TH[d.getMonth()];}
+    const crossMonth=w.sun.getMonth()!==w.mon.getMonth();
+    const crossNote=crossMonth?' <span style="font-size:9px;color:#94a3b8">(ข้ามเดือน)</span>':'';
     return `<div class="wk-block${isSel?' wk-sel':''}${isEmpty?' wk-empty':''}" onclick="WD.selectWeekBlock('${wkStr}','${monDS}','${sunDS}')">
       <div class="wk-block-info">
         <div class="wk-block-title">สัปดาห์ที่ ${wkNum} / ${buddYear(y)}${isSel?' ✓':''}</div>
-        <div class="wk-block-range">${fmtD(w.mon)} – ${fmtD(w.sun)}</div>
+        <div class="wk-block-range">${fmtD(w.mon)} – ${fmtD(w.sun)}${crossNote}</div>
       </div>
       <div class="wk-block-cnt${cnt===0?' cnt-0':''}">${cnt===0?'ว่าง':cnt+' รายการ'}</div>
     </div>`;
