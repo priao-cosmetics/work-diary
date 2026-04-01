@@ -5084,18 +5084,18 @@ function exportJSON(endMonthName){
   try{backup.actionHistory=getActionHistory();}catch(e){backup.actionHistory=[];}
   const count=Object.keys(backup.diary).length;
   const jsonStr=JSON.stringify(backup,null,2);
-  // Filename format
+  // Filename format (ISO 8601: YYYY-MM-DD)
   var fileName;
   if(endMonthName){
-    // ระบบจบเดือน: Work_diary_V2.3.2_สิ้นเดือน_มีค_2569.json
-    fileName='Work_diary_'+APP_VERSION+'_สิ้นเดือน_'+endMonthName.replace(/\s+/g,'_')+'.json';
+    // ระบบจบเดือน: Work_diary_V2.3.3_สิ้นเดือน_2026-03.json
+    fileName='Work_diary_'+APP_VERSION+'_สิ้นเดือน_'+endMonthName+'.json';
   } else {
-    // User กด Backup: Work_diary_V2.3.2_dd-MM-yyyy.json
+    // User กด Backup: Work_diary_V2.3.3_2026-03-30.json
     var now=new Date();
-    var dd=String(now.getDate()).padStart(2,'0');
+    var yyyy=now.getFullYear();
     var mm=String(now.getMonth()+1).padStart(2,'0');
-    var yyyy=now.getFullYear()+543;
-    fileName='Work_diary_'+APP_VERSION+'_'+dd+'-'+mm+'-'+yyyy+'.json';
+    var dd=String(now.getDate()).padStart(2,'0');
+    fileName='Work_diary_'+APP_VERSION+'_'+yyyy+'-'+mm+'-'+dd+'.json';
   }
   // Try Save As dialog (Chrome/Edge) — fallback to auto-download
   if(window.showSaveFilePicker){
@@ -5849,8 +5849,8 @@ function confirmEndMonth(){
   var target=endMonth._target;
   if(!target){toast('ไม่พบข้อมูลเดือนที่จะจบ','err');return;}
   var targetYear=target.year, targetMonth=target.month;
-  // Step 1: Auto Backup JSON (ชื่อไฟล์: สิ้นเดือน_monthName)
-  exportJSON(target.monthName);
+  // Step 1: Auto Backup JSON (ISO format: YYYY-MM)
+  exportJSON(targetYear+'-'+String(targetMonth+1).padStart(2,'0'));
   // Step 2: Auto Export Word (trigger word export for monthly)
   // (user can export manually — we just backup JSON here)
   // Step 3: Create Template from review items
