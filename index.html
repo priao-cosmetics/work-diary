@@ -7069,14 +7069,25 @@ async function doWord(){
     var bytes=new Uint8Array(arrBuf.slice(0,4));
     if(bytes[0]!==0x50||bytes[1]!==0x4B){throw new Error('\u0e44\u0e1f\u0e25\u0e4c Word \u0e40\u0e2a\u0e35\u0e22 (invalid ZIP signature)');}
     blob=new Blob([arrBuf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    var s=W.getSettings(), nm=s.name||'report';
-    // Format: Weekly_Report-Name-(dd-dd)-MM-yyyy.docx / Monthly_Report-Name-(dd-dd)-MM-yyyy.docx
-    var ds=W.fromDS(r.start), de=W.fromDS(r.end);
-    var dd1=String(ds.getDate()).padStart(2,'0'), dd2=String(de.getDate()).padStart(2,'0');
-    var mm=String(de.getMonth()+1).padStart(2,'0');
-    var yyyy=de.getFullYear()+543;
-    var prefix=W.expType==='weekly'?'Weekly_Report':'Monthly_Report';
-    var fn=prefix+'-'+nm+'-('+dd1+'-'+dd2+')-'+mm+'-'+yyyy+'.docx';
+    // Filename: weekly-ชื่อ-YYYY-W format (ตามทีม + ISO Week)
+    var s=W.getSettings(), nm=(s.name||'report').replace(/\s+/g,'-');
+    var fn;
+    if(W.expType==='weekly'){
+      var sw=W._selWeeks;
+      if(sw&&sw.length>0){
+        var wks=sw.map(function(w){return w.wkStr.split('-')[1];});// ['W13','W14']
+        var yr=sw[0].wkStr.split('-')[0];// '2026'
+        // weekly-ชื่อ-2026-W14.docx or weekly-ชื่อ-2026-W13-W14.docx
+        fn='weekly-'+nm+'-'+yr+'-'+wks.join('-')+'.docx';
+      } else {
+        // Fallback: calculate ISO week from start date
+        var sd=W.fromDS(r.start);
+        fn='weekly-'+nm+'-'+W.isoWeekStr(sd)+'.docx';
+      }
+    } else {
+      // monthly-ชื่อ-2026-03.docx
+      fn='monthly-'+nm+'-'+r.start.slice(0,7)+'.docx';
+    }
     var url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url);
     W.closeModal('exportModal');
