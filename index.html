@@ -6181,6 +6181,24 @@ function checkPinLock(){
   _pinBuffer='';
   _pinAttempts=0;
   updatePinDots();
+  // Keyboard support (PC): กดเลข 0-9, Backspace, Enter
+  if(!checkPinLock._kbAttached){
+    checkPinLock._kbAttached=true;
+    document.addEventListener('keydown',function(e){
+      var lock=document.getElementById('pinLockScreen');
+      if(!lock||lock.style.display!=='flex') return;
+      // ถ้าอยู่หน้ากู้คืน (pinForgotPanel แสดงอยู่) → ไม่ดักปุ่ม ให้พิมพ์รหัสพนักงานได้
+      var fp=document.getElementById('pinForgotPanel');
+      if(fp&&fp.style.display==='block') return;
+      if(e.key>='0'&&e.key<='9'){
+        e.preventDefault();
+        pinInput(parseInt(e.key));
+      } else if(e.key==='Backspace'){
+        e.preventDefault();
+        pinDelete();
+      }
+    });
+  }
 }
 
 function pinInput(n){
