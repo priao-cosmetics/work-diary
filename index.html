@@ -3766,15 +3766,18 @@
                 <span style="font-size:13px;font-weight:700;color:#0369a1">Auto-save</span>
                 <span id="autoSaveBadge" style="display:none;font-size:10px;color:#16a34a;background:#dcfce7;padding:2px 8px;border-radius:6px;font-weight:600"></span>
               </div>
-              <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
-                <input type="checkbox" id="autoSaveToggle" onchange="WD.toggleAutoSave()" style="opacity:0;width:0;height:0">
-                <span style="position:absolute;inset:0;background:#cbd5e1;border-radius:12px;transition:.3s"></span>
-                <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
-                <style>
-                  #autoSaveToggle:checked + span{background:#0c7fd4}
-                  #autoSaveToggle:checked + span + span{transform:translateX(20px)}
-                </style>
-              </label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+                  <input type="checkbox" id="autoSaveToggle" onchange="WD.toggleAutoSave()" style="opacity:0;width:0;height:0">
+                  <span style="position:absolute;inset:0;background:#cbd5e1;border-radius:12px;transition:.3s"></span>
+                  <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+                  <style>
+                    #autoSaveToggle:checked + span{background:#16a34a}
+                    #autoSaveToggle:checked + span + span{transform:translateX(20px)}
+                  </style>
+                </label>
+                <span id="autoSaveLabel" style="font-size:12px;font-weight:700;color:#94a3b8;min-width:28px">OFF</span>
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#475569">
               <span>บันทึกทุก</span>
@@ -6252,12 +6255,24 @@ function toggleAutoSave(){
     // เปิด Auto-save → บังคับ Browse เลือกที่ save
     if(!window.showSaveFilePicker){
       toast('⚠️ Auto-save รองรับเฉพาะ Chrome/Edge','err');
-      cb.checked=false;return;
+      cb.checked=false;_syncAutoSaveLabel();return;
     }
     setupAutoSave();
   } else {
     stopAutoSave();
+    _syncAutoSaveLabel();
     toast('Auto-save ปิดแล้ว','');
+  }
+}
+
+function _syncAutoSaveLabel(){
+  var cb=document.getElementById('autoSaveToggle');
+  var lbl=document.getElementById('autoSaveLabel');
+  if(!lbl) return;
+  if(cb&&cb.checked){
+    lbl.textContent='ON';lbl.style.color='#16a34a';
+  } else {
+    lbl.textContent='OFF';lbl.style.color='#94a3b8';
   }
 }
 
@@ -6282,11 +6297,13 @@ function setupAutoSave(){
     _startAutoSaveTimer();
     // Save ครั้งแรกทันที
     _doAutoSave();
+    _syncAutoSaveLabel();
     toast('💾 Auto-save เปิดแล้ว (ทุก '+_autoSaveInterval+' นาที)','ok');
   }).catch(function(){
     // User กด Cancel
     var cb=document.getElementById('autoSaveToggle');
     if(cb) cb.checked=false;
+    _syncAutoSaveLabel();
     toast('ยกเลิกเลือกที่ save','');
   });
 }
@@ -6344,6 +6361,7 @@ function _doAutoSave(){
     toast('⚠️ Auto-save หยุดทำงาน — กรุณาเปิดใหม่ในตั้งค่า','err');
     var cb=document.getElementById('autoSaveToggle');
     if(cb) cb.checked=false;
+    _syncAutoSaveLabel();
   });
 }
 
@@ -6355,6 +6373,8 @@ function stopAutoSave(){
   setSettings(st);
   var badge=document.getElementById('autoSaveBadge');
   if(badge) badge.style.display='none';
+  var lbl=document.getElementById('autoSaveLabel');
+  if(lbl){lbl.textContent='OFF';lbl.style.color='#94a3b8';}
 }
 
 function changeAutoSaveInterval(){
@@ -6372,7 +6392,10 @@ function initAutoSave(){
   var s=getSettings();
   var cb=document.getElementById('autoSaveToggle');
   var sel=document.getElementById('autoSaveInterval');
-  if(cb) cb.checked=false; // เริ่มปิดเสมอ (ต้อง Browse ใหม่ทุก session)
+  var lbl=document.getElementById('autoSaveLabel');
+  var isOn=!!_autoSaveHandle;
+  if(cb) cb.checked=isOn;
+  if(lbl){lbl.textContent=isOn?'ON':'OFF';lbl.style.color=isOn?'#16a34a':'#94a3b8';}
   if(sel&&s.autoSaveMin) sel.value=String(s.autoSaveMin);
 }
 
