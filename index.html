@@ -3643,6 +3643,9 @@
           <div class="settings-sec" style="margin-top: 24px">
             💾 สำรองข้อมูล
           </div>
+          <div id="lastSaveLabel" style="font-size:12px;color:#475569;margin-bottom:8px;padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+            <span style="color:#94a3b8">ยังไม่เคย Backup</span>
+          </div>
           <div
             id="backupReminderBanner"
             style="
@@ -3754,6 +3757,40 @@
             ⚡ Backup ก่อน clear browser ทุกครั้ง — รวมชื่อ/ตำแหน่ง/แผนกในไฟล์
             backup
           </p>
+
+          <!-- ═══ Auto-save ═══ -->
+          <div style="margin-top:16px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:14px 16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:16px">🔄</span>
+                <span style="font-size:13px;font-weight:700;color:#0369a1">Auto-save</span>
+                <span id="autoSaveBadge" style="display:none;font-size:10px;color:#16a34a;background:#dcfce7;padding:2px 8px;border-radius:6px;font-weight:600"></span>
+              </div>
+              <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+                <input type="checkbox" id="autoSaveToggle" onchange="WD.toggleAutoSave()" style="opacity:0;width:0;height:0">
+                <span style="position:absolute;inset:0;background:#cbd5e1;border-radius:12px;transition:.3s"></span>
+                <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+                <style>
+                  #autoSaveToggle:checked + span{background:#0c7fd4}
+                  #autoSaveToggle:checked + span + span{transform:translateX(20px)}
+                </style>
+              </label>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#475569">
+              <span>บันทึกทุก</span>
+              <select id="autoSaveInterval" onchange="WD.changeAutoSaveInterval()" style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;font-family:inherit;background:#fff">
+                <option value="5">5 นาที</option>
+                <option value="15">15 นาที</option>
+                <option value="30" selected>30 นาที</option>
+                <option value="60">1 ชั่วโมง</option>
+              </select>
+              <span style="color:#94a3b8">• Chrome/Edge เท่านั้น</span>
+            </div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:6px;line-height:1.4">
+              เปิดครั้งแรก → เลือกที่ save → หลังจากนั้นเขียนทับเงียบๆ<br>
+              ⌨️ Ctrl+S = Quick Save ได้ทุกเมื่อ
+            </div>
+          </div>
 
           <!-- ═══ จบเดือน ═══ -->
           <div onclick="WD.endMonth()" style="margin-top:24px;display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 16px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;transition:background 0.2s">
@@ -4970,7 +5007,9 @@ function openSettings(){
   renderRoutineSettings();
   if(!_histCollapsed) renderHistorySettings();
   checkBackupReminder();
+  _renderLastSaveLabel();
   renderInstallGuide();
+  initAutoSave();
   var tc=document.getElementById('tutorialContent');if(tc)tc.style.display='none';
   document.getElementById('settingsModal').classList.add('open');
 }
@@ -5046,6 +5085,35 @@ function doCleanAll(){
 }
 
 // ── Backup / Restore ──
+// ── Last Save Label ──
+var LAST_SAVE_KEY=PFX+'__lastSave';
+
+function _updateLastSaveLabel(type){
+  var now=new Date();
+  var info={
+    ts:now.toISOString(),
+    type:type, // 'manual' or 'auto'
+    display:fmtShort(toDS(now))+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')
+  };
+  localStorage.setItem(LAST_SAVE_KEY,JSON.stringify(info));
+  _renderLastSaveLabel();
+}
+
+function _renderLastSaveLabel(){
+  var el=document.getElementById('lastSaveLabel');
+  if(!el) return;
+  try{
+    var raw=localStorage.getItem(LAST_SAVE_KEY);
+    if(!raw){el.innerHTML='<span style="color:#94a3b8">ยังไม่เคย Backup</span>';return;}
+    var info=JSON.parse(raw);
+    var typeLabel=info.type==='auto'?'🔄 Auto':'💾 Manual';
+    var typeBg=info.type==='auto'?'#dbeafe':'#dcfce7';
+    var typeColor=info.type==='auto'?'#1d4ed8':'#16a34a';
+    el.innerHTML='<span style="font-weight:600">'+info.display+'</span> '
+      +'<span style="font-size:10px;background:'+typeBg+';color:'+typeColor+';padding:1px 6px;border-radius:4px;font-weight:600">'+typeLabel+'</span>';
+  }catch(e){el.innerHTML='';}
+}
+
 function exportJSON(endMonthName){
   // Get settings from localStorage directly (source of truth)
   const rawSettings=localStorage.getItem(SK);
@@ -5108,6 +5176,7 @@ function exportJSON(endMonthName){
       });
     }).then(function(){
       localStorage.setItem(BACKUP_KEY, JSON.stringify({ts:new Date().toISOString(),count:count}));
+      _updateLastSaveLabel('manual');
       toast('💾 Backup '+count+' วัน + ตั้งค่า: '+getSettings().name+' สำเร็จ','ok');
     }).catch(function(err){
       if(err.name!=='AbortError') toast('⚠️ บันทึกไม่สำเร็จ: '+err.message,'err');
@@ -5118,6 +5187,7 @@ function exportJSON(endMonthName){
     var a=document.createElement('a');
     a.href=url;a.download=fileName;a.click();URL.revokeObjectURL(url);
     localStorage.setItem(BACKUP_KEY, JSON.stringify({ts:new Date().toISOString(),count:count}));
+    _updateLastSaveLabel('manual');
     toast('💾 Backup '+count+' วัน + ตั้งค่า: '+getSettings().name+' สำเร็จ','ok');
   }
 }
@@ -5351,6 +5421,17 @@ document.addEventListener('keydown',function(e){
     else if(id==='ideaInput'){e.preventDefault();WD.addIdea();}
   }
   if(e.key==='Escape'){closeAllModals();}
+  // Ctrl+S → Quick Save JSON (ไม่ทำงานตอน PIN lock)
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){
+    e.preventDefault();
+    var lock=document.getElementById('pinLockScreen');
+    if(lock&&lock.style.display==='flex') return; // PIN lock → ไม่ save
+    if(_autoSaveHandle){
+      _doAutoSave();toast('💾 Quick Save สำเร็จ','ok');
+    } else {
+      exportJSON();
+    }
+  }
 });
 
 // ── Mobile nav touch ──
@@ -6159,6 +6240,142 @@ function tdDropStatus(srcIdx,st){
   toast('เปลี่ยนเป็น '+(labels[st]||st));
 }
 
+// ── Auto-save System (File System Access API — Chrome/Edge) ──
+var _autoSaveHandle=null;
+var _autoSaveTimer=null;
+var _autoSaveInterval=30; // minutes (default)
+
+function toggleAutoSave(){
+  var cb=document.getElementById('autoSaveToggle');
+  if(!cb) return;
+  if(cb.checked){
+    // เปิด Auto-save → บังคับ Browse เลือกที่ save
+    if(!window.showSaveFilePicker){
+      toast('⚠️ Auto-save รองรับเฉพาะ Chrome/Edge','err');
+      cb.checked=false;return;
+    }
+    setupAutoSave();
+  } else {
+    stopAutoSave();
+    toast('Auto-save ปิดแล้ว','');
+  }
+}
+
+function setupAutoSave(){
+  // เปิด Browse เลือกที่ save
+  var s=getSettings();
+  var nm=(s.name||'backup').replace(/\s+/g,'-');
+  window.showSaveFilePicker({
+    suggestedName:'Work_diary_'+APP_VERSION+'_autosave_'+nm+'.json',
+    types:[{description:'JSON Backup',accept:{'application/json':['.json']}}]
+  }).then(function(handle){
+    _autoSaveHandle=handle;
+    // อ่านค่า interval จาก dropdown
+    var sel=document.getElementById('autoSaveInterval');
+    _autoSaveInterval=sel?parseInt(sel.value)||30:30;
+    // Save settings
+    var st=getSettings();
+    st.autoSave=true;
+    st.autoSaveMin=_autoSaveInterval;
+    setSettings(st);
+    // เริ่ม timer
+    _startAutoSaveTimer();
+    // Save ครั้งแรกทันที
+    _doAutoSave();
+    toast('💾 Auto-save เปิดแล้ว (ทุก '+_autoSaveInterval+' นาที)','ok');
+  }).catch(function(){
+    // User กด Cancel
+    var cb=document.getElementById('autoSaveToggle');
+    if(cb) cb.checked=false;
+    toast('ยกเลิกเลือกที่ save','');
+  });
+}
+
+function _startAutoSaveTimer(){
+  if(_autoSaveTimer) clearInterval(_autoSaveTimer);
+  _autoSaveTimer=setInterval(function(){
+    if(_autoSaveHandle) _doAutoSave();
+  },_autoSaveInterval*60*1000);
+}
+
+function _doAutoSave(){
+  if(!_autoSaveHandle) return;
+  // สร้าง backup data (เหมือน exportJSON แต่ไม่ download)
+  var s=getSettings();
+  var rawSettings=localStorage.getItem(SK)||'';
+  var backup={
+    version:2,
+    appVersion:APP_VERSION,
+    exportedAt:new Date().toISOString(),
+    settings:{name:s.name||'',position:s.position||'',department:s.department||'',empId:s.empId||''},
+    settingsRaw:(function(){try{var raw=JSON.parse(rawSettings||'{}');delete raw.pinHash;return JSON.stringify(raw);}catch(e){return rawSettings||'';}})(),
+    diary:{}
+  };
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k&&k.startsWith(PFX)&&k.indexOf('__')<0){
+      try{backup.diary[k]=JSON.parse(localStorage.getItem(k));}catch(e){}
+    }
+  }
+  var ideasRaw=localStorage.getItem(PFX+'__ideas');
+  if(ideasRaw) backup.ideas=ideasRaw;
+  var tplRaw=localStorage.getItem(PFX+'__tpl');
+  if(tplRaw) backup.templates=tplRaw;
+  var rtRaw=localStorage.getItem(PFX+'__routines');
+  if(rtRaw) backup.routines=rtRaw;
+  var json=JSON.stringify(backup,null,2);
+  // เขียนทับไฟล์เดิม (ไม่เปิด dialog)
+  _autoSaveHandle.createWritable().then(function(writable){
+    return writable.write(json).then(function(){return writable.close();});
+  }).then(function(){
+    // อัพเดต last save time
+    var now=new Date();
+    var timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    var badge=document.getElementById('autoSaveBadge');
+    if(badge){badge.textContent='💾 '+timeStr;badge.style.display='inline-block';}
+    _updateLastSaveLabel('auto');
+    // อัพเดต backup reminder
+    localStorage.setItem(PFX+'__lastBackup',new Date().toISOString());
+  }).catch(function(err){
+    console.warn('Auto-save error:',err);
+    // Handle อาจหมดอายุ → ต้อง Browse ใหม่
+    _autoSaveHandle=null;
+    stopAutoSave();
+    toast('⚠️ Auto-save หยุดทำงาน — กรุณาเปิดใหม่ในตั้งค่า','err');
+    var cb=document.getElementById('autoSaveToggle');
+    if(cb) cb.checked=false;
+  });
+}
+
+function stopAutoSave(){
+  if(_autoSaveTimer){clearInterval(_autoSaveTimer);_autoSaveTimer=null;}
+  _autoSaveHandle=null;
+  var st=getSettings();
+  st.autoSave=false;
+  setSettings(st);
+  var badge=document.getElementById('autoSaveBadge');
+  if(badge) badge.style.display='none';
+}
+
+function changeAutoSaveInterval(){
+  var sel=document.getElementById('autoSaveInterval');
+  if(!sel) return;
+  _autoSaveInterval=parseInt(sel.value)||30;
+  var st=getSettings();
+  st.autoSaveMin=_autoSaveInterval;
+  setSettings(st);
+  if(_autoSaveTimer) _startAutoSaveTimer(); // restart timer
+  toast('ตั้งเวลา Auto-save ทุก '+_autoSaveInterval+' นาที','ok');
+}
+
+function initAutoSave(){
+  var s=getSettings();
+  var cb=document.getElementById('autoSaveToggle');
+  var sel=document.getElementById('autoSaveInterval');
+  if(cb) cb.checked=false; // เริ่มปิดเสมอ (ต้อง Browse ใหม่ทุก session)
+  if(sel&&s.autoSaveMin) sel.value=String(s.autoSaveMin);
+}
+
 // ── PIN Lock System ──
 var _pinBuffer='';
 var _pinAttempts=0;
@@ -6401,6 +6618,9 @@ return {
 
   // ── Required Fields ──
   checkRequiredFields,
+
+  // ── Auto-save ──
+  toggleAutoSave, changeAutoSaveInterval, initAutoSave,
 };
 
 })();
@@ -8124,21 +8344,28 @@ function buildManualHTML(){
     +'<div class="hd"><h1>📘 คู่มือ <em>Work Diary</em> — หน้า 4</h1><div class="ver">'+ver+'</div></div>'
     +'<div class="sec p"><span class="sn">🆕 ฟีเจอร์ใหม่ '+ver+'</span></div>'
     +'<div class="gr">'
-    +'<div class="cd pu"><div class="ch"><div class="cn p">15</div><div class="ct">🔐 PIN + รหัสพนักงาน</div></div><div class="pt">ตั้ง <b class="p">PIN 4 หลัก (ตัวเลขเท่านั้น)</b> ที่ ⚙️ ตั้งค่า</div><div class="pt">กรอก <b>รหัสพนักงาน</b> ไว้ใช้กู้ PIN เมื่อลืม</div><div class="pt"><b class="r">ผิด 5 ครั้ง</b> → เด้งไปหน้ากู้คืนอัตโนมัติ</div><div class="pt">Backup JSON: <b class="g">empId ติดไป</b> แต่ <b>PIN ไม่ติด</b> (ปลอดภัย)</div><div class="pt">เว้น PIN ว่าง = ไม่ล็อค</div></div>'
+    +'<div class="cd pu"><div class="ch"><div class="cn p">15</div><div class="ct">🔐 PIN + รหัสพนักงาน</div></div><div class="pt">ตั้ง <b class="p">PIN 4 หลัก (ตัวเลขเท่านั้น)</b> ที่ ⚙️ ตั้งค่า</div><div class="pt">กรอก <b>รหัสพนักงาน</b> ไว้ใช้กู้ PIN เมื่อลืม</div><div class="pt"><b class="r">ผิด 5 ครั้ง</b> → เด้งไปหน้ากู้คืนอัตโนมัติ</div><div class="pt">PC: กด <b class="p">แป้นพิมพ์ 0-9 + Backspace</b> ได้เลย</div><div class="pt">Backup JSON: <b class="g">empId ติดไป</b> แต่ <b>PIN ไม่ติด</b></div></div>'
     +'<div class="cd pu"><div class="ch"><div class="cn p">16</div><div class="ct">📌 Tab แผนงาน (Analytics)</div></div><div class="pt">กด <b class="p">📊 วิเคราะห์</b> → เห็น Tab สลับ</div><div class="pt"><b>📊 กราฟ</b> = KPI + Donut + Bar เหมือนเดิม</div><div class="pt"><b class="p">📌 ดูแผนงานเดือนนี้</b> = review items ทั้งเดือน</div><div class="pt">แยกตามเดือน + แสดง Priority สี</div></div>'
     +'<div class="cd gn"><div class="ch"><div class="cn g">17</div><div class="ct">👆 Touch Drag (มือถือ)</div></div><div class="pt"><b class="g">กดค้าง 400ms</b> ที่รายการ → เริ่มลาก</div><div class="pt">เลื่อนนิ้ว → ย้ายตำแหน่ง → ปล่อย = วาง</div><div class="pt">ใช้ได้กับ <b>งาน + Blocker + Ideas</b></div><div class="pt">ลากไปวางที่ปุ่มสถานะ ✅ 🔄 📌 ได้ด้วย</div></div>'
     +'<div class="cd bl"><div class="ch"><div class="cn">18</div><div class="ct">📅 ปฏิทินจุดสีสถานะ</div></div><div class="pt">ปฏิทินมือถือแสดง <b class="g">🟢 เขียว</b> = เสร็จ</div><div class="pt"><b class="o">🟡 ส้ม</b> = รอดำเนิน | <b class="p">🟣 ม่วง</b> = แผนงาน</div><div class="pt">↪️ forwarded ไม่แสดง (ดึงไปแล้ว)</div></div>'
     +'<div class="cd bl"><div class="ch"><div class="cn">19</div><div class="ct">📄 ลายน้ำโลโก้ใน Word</div></div><div class="pt">Export Word → มี <b>ลายน้ำโลโก้เปรียว</b> กลางหน้า</div><div class="pt">จางๆ อยู่หลังข้อความ ไม่บังเนื้อหา</div><div class="pt">แสดง <b>ทุกหน้า</b> อัตโนมัติ</div></div>'
     +'<div class="cd bl"><div class="ch"><div class="cn">20</div><div class="ct">🚀 Onboarding + โลโก้</div></div><div class="pt">เปิดครั้งแรก → <b>แนะนำ 4 หน้า</b></div><div class="pt">จบ Onboarding → <b class="p">เปิดตั้งค่าอัตโนมัติ</b></div><div class="pt">โลโก้เปรียวแสดงใน PIN Lock + Onboarding</div></div>'
     +'</div>'
+    +'<div class="cd gn"><div class="ch"><div class="cn g">19</div><div class="ct">💾 Ctrl+S + Auto-save</div></div><div class="pt"><b class="g">Ctrl+S</b> (PC) = Quick Save JSON ทันที</div><div class="pt"><b class="p">Auto-save</b>: ตั้งค่า → เปิด toggle → เลือกที่ save</div><div class="pt">เขียนทับเงียบๆ ทุก 5-60 นาที (Chrome/Edge)</div><div class="pt">แสดง <b>วันเวลา save ล่าสุด</b> + badge Manual/Auto</div></div>'
+    +'<div class="cd bl"><div class="ch"><div class="cn">20</div><div class="ct">📐 มาตรฐาน ISO 8601</div></div><div class="pt"><b>ปฏิทิน</b>: เริ่มวันจันทร์ (ISO 8601)</div><div class="pt"><b>สัปดาห์ Export</b>: ตาม Monday ของ ISO Week</div><div class="pt"><b>Backup filename</b>: YYYY-MM-DD (เรียงตามเวลา)</div><div class="pt"><b>Word filename</b>: weekly-ชื่อ-YYYY-W14.docx</div></div>'
+    +'<div class="cd bl"><div class="ch"><div class="cn">21</div><div class="ct">📋 บังคับกรอกข้อมูล</div></div><div class="pt">เปิดแอป → popup บังคับกรอก <b>5 ฟิลด์</b></div><div class="pt">ชื่อ, ตำแหน่ง, ฝ่าย, รหัสพนักงาน, PIN</div><div class="pt"><b class="r">ปิดไม่ได้</b> จนกว่าจะกรอกครบ</div><div class="pt">กด "ไปตั้งค่า" → กรอก → save → popup หาย</div></div>'
+    +'</div>'
     +'<div class="sec"><span class="sn">⌨️ Shortcut + เคล็ดลับ</span></div>'
     +'<div class="gr">'
-    +'<div class="cd bl"><div class="ch"><div class="cn">21</div><div class="ct">Keyboard Shortcuts</div></div>'
+    +'<div class="cd bl"><div class="ch"><div class="cn">22</div><div class="ct">Keyboard Shortcuts</div></div>'
     +'<table class="tb"><tr><th>ปุ่ม</th><th>ผลลัพธ์</th></tr>'
     +'<tr><td><b>Enter</b></td><td>เพิ่มงาน / บันทึกแก้ไข</td></tr>'
     +'<tr><td><b>Shift + Enter</b></td><td>ขึ้นบรรทัดใหม่ในช่องพิมพ์</td></tr>'
+    +'<tr><td><b>Ctrl + S</b></td><td>Quick Save JSON ทันที</td></tr>'
+    +'<tr><td><b>0-9 (หน้า PIN)</b></td><td>กดแป้นพิมพ์ใส่ PIN ได้</td></tr>'
+    +'<tr><td><b>Backspace (หน้า PIN)</b></td><td>ลบตัวเลขล่าสุด</td></tr>'
     +'<tr><td><b>กดค้าง (มือถือ)</b></td><td>เริ่มลากจัดลำดับ</td></tr></table></div>'
-    +'<div class="cd"><div class="ch"><div class="cn">22</div><div class="ct">เคล็ดลับ</div></div><div class="pt"><b class="g">เปลี่ยนสถานะด่วน:</b> ลากงานไปวางที่ปุ่ม ✅ 🔄 📌</div><div class="pt"><b class="o">เปลี่ยน Priority:</b> คลิก badge สีบนรายการ</div><div class="pt"><b class="r">ลบผิด:</b> Undo ภายใน 5 วิ หรือกดใน Settings</div><div class="pt"><b class="p">ปุ่ม nav กดซ้ำ:</b> กดซ้ำ = หุบ (toggle ทุกปุ่ม)</div></div>'
+    +'<div class="cd"><div class="ch"><div class="cn">23</div><div class="ct">เคล็ดลับ</div></div><div class="pt"><b class="g">เปลี่ยนสถานะด่วน:</b> ลากงานไปวางที่ปุ่ม ✅ 🔄 📌</div><div class="pt"><b class="o">เปลี่ยน Priority:</b> คลิก badge สีบนรายการ</div><div class="pt"><b class="r">ลบผิด:</b> Undo ภายใน 5 วิ หรือกดใน Settings</div><div class="pt"><b class="p">ปุ่ม nav กดซ้ำ:</b> กดซ้ำ = หุบ (toggle ทุกปุ่ม)</div><div class="pt"><b>จบเดือน:</b> กดจาก Settings → overlay ลอยทับได้เลย</div></div>'
     +'</div>'
     +'<div class="sec r"><span class="sn">🛡️ คำเตือนสำคัญ</span></div>'
     +'<div class="gr">'
@@ -8196,6 +8423,7 @@ W.startClock = startClock;
         WD.checkPinLock();
         WD.showOnboard();
         WD.checkRequiredFields();
+        WD.initAutoSave();
       })();
     </script>
     <!-- PWA Service Worker (ทำงานเฉพาะ HTTPS เช่น GitHub Pages) -->
