@@ -1,9 +1,8 @@
-// ══════════════════════════════════════════════════════
-//  SERVICE WORKER — Work Diary PWA
-//  Cache Strategy: Cache-First + Version Update
-// ══════════════════════════════════════════════════════
-
-const CACHE_VERSION = 'wd-v2.3.3-2604290823';
+// ══════════════════════════════════════════════════
+//  Work Diary V2.4.1 — Service Worker (PWA)
+//  Strategy: Network-first with offline fallback
+// ══════════════════════════════════════════════════
+const CACHE_VERSION = 'wd-v2.4.3-1779068873';  // deploy.py replaces with timestamp
 const CACHE_FILES = [
   './',
   './index.html',
@@ -12,64 +11,52 @@ const CACHE_FILES = [
   './icon-512.png'
 ];
 
-// ── Install: cache ทุกไฟล์ ──
-self.addEventListener('install', function(event) {
-  console.log('[SW] Install:', CACHE_VERSION);
-  event.waitUntil(
+self.addEventListener('install', function(evt) {
+  console.log('[PWA] SW wd-v2.4.3-1779068873');
+  evt.waitUntil(
     caches.open(CACHE_VERSION).then(function(cache) {
       return cache.addAll(CACHE_FILES);
     }).then(function() {
-      // Skip waiting → activate ทันที
       return self.skipWaiting();
     })
   );
 });
 
-// ── Activate: ลบ cache เก่า ──
-self.addEventListener('activate', function(event) {
-  console.log('[SW] Activate:', CACHE_VERSION);
-  event.waitUntil(
-    caches.keys().then(function(keys) {
+self.addEventListener('activate', function(evt) {
+  console.log('[PWA] SW activate — clearing old caches');
+  evt.waitUntil(
+    caches.keys().then(function(names) {
       return Promise.all(
-        keys.filter(function(key) {
-          return key !== CACHE_VERSION;
-        }).map(function(key) {
-          console.log('[SW] Delete old cache:', key);
-          return caches.delete(key);
-        })
+        names.filter(function(n) { return n !== CACHE_VERSION; })
+             .map(function(n) { return caches.delete(n); })
       );
     }).then(function() {
-      // Claim all tabs ทันที
       return self.clients.claim();
     }).then(function() {
-      // แจ้งทุก tab ว่ามี version ใหม่
-      return self.clients.matchAll().then(function(clients) {
-        clients.forEach(function(client) {
-          client.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION });
-        });
+      return self.clients.matchAll();
+    }).then(function(clients) {
+      clients.forEach(function(c) {
+        c.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION });
       });
     })
   );
 });
 
-// ── Fetch: Network-first (ถ้า online ดึงใหม่, ถ้า offline ใช้ cache) ──
-self.addEventListener('fetch', function(event) {
-  event.respondWith(
-    fetch(event.request).then(function(response) {
-      // Online: ดึงสำเร็จ → เก็บ cache ด้วย
-      var clone = response.clone();
-      caches.open(CACHE_VERSION).then(function(cache) {
-        cache.put(event.request, clone);
-      });
+self.addEventListener('fetch', function(evt) {
+  // Network-first strategy: try network, fallback to cache
+  evt.respondWith(
+    fetch(evt.request).then(function(response) {
+      // Cache successful responses
+      if (response && response.status === 200 && evt.request.method === 'GET') {
+        var clone = response.clone();
+        caches.open(CACHE_VERSION).then(function(cache) {
+          cache.put(evt.request, clone);
+        });
+      }
       return response;
     }).catch(function() {
-      // Offline: ใช้ cache
-      return caches.match(event.request).then(function(cached) {
-        return cached || new Response('Offline — ไม่มี cache สำหรับหน้านี้', {
-          status: 503,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        });
-      });
+      // Network failed — use cache
+      return caches.match(evt.request);
     })
   );
 });
