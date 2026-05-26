@@ -2,7 +2,7 @@
 //  Work Diary V2.4.1 — Service Worker (PWA)
 //  Strategy: Network-first with offline fallback
 // ══════════════════════════════════════════════════
-const CACHE_VERSION = 'wd-v2.4.3-1779068873';  // deploy.py replaces with timestamp
+const CACHE_VERSION = 'wd-v2.4.6-1779780298';  // deploy.py replaces with timestamp
 const CACHE_FILES = [
   './',
   './index.html',
@@ -12,7 +12,7 @@ const CACHE_FILES = [
 ];
 
 self.addEventListener('install', function(evt) {
-  console.log('[PWA] SW wd-v2.4.3-1779068873');
+  console.log('[PWA] SW wd-v2.4.6-1779780298');
   evt.waitUntil(
     caches.open(CACHE_VERSION).then(function(cache) {
       return cache.addAll(CACHE_FILES);
